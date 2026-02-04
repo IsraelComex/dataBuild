@@ -2,8 +2,8 @@ from tkinter import Tk, simpledialog, messagebox, Label
 from tkinter.filedialog import askopenfilename
 from numpy import False_
 from utils import obter_data_limite, abrir_gmail
-from excel_process import processar_arquivo_excel, salvar_arquivo_excel, mover_arquivos_para_historico
-from otm_process import processar_registros_ntr_otm, processar_registros_ntrbr_otm
+from excel_process import processar_arquivo_excel, salvar_arquivo_excel, limpar_pasta_csv
+from otm_process_new import processar_registros_ntrbr_otm_completo
 from playwright.sync_api import sync_playwright
 import csv_writer as csv_writer
 import time
@@ -36,7 +36,7 @@ def selecionar_arquivo():
 
 
 def main():
-    # print('A T E N Ç Ã O: *** ESTE É UM AMBIENTE DE TESTE ***')    
+    # print('A T E N Ç Ã O: *** ESTE É UM AMBIENTE HML DE TESTE ***')    
     data_limite = None
     caminho_arquivo_excel = None
     
@@ -83,10 +83,11 @@ def main():
         print("\nRealizando tratamento...")
         print('------------------------------------------------------------------------------------')
         
-        # folder_path = r'C:\Temp\Cadastro de Tabela'
-        df, registros = processar_arquivo_excel(caminho_arquivo_excel)
+        # folder_path = r'C:\Temp\Cadastro de Tabela' 
         print()
         print("Criando csv para upload...")
+        df, registros = processar_arquivo_excel(caminho_arquivo_excel)
+        limpar_pasta_csv()
         print('------------------------------------------------------------------------------------')
         # print(df)
         if df is None or registros is None:
@@ -105,10 +106,10 @@ def main():
         print()
         retornar_menu()
 
+
     def etapa3():
         nonlocal data_limite, registros
-        print("\nExecutando Etapa 3: Processar registros NTR OTM PROD...")
-        print("Iniciando inativação de tarifas existentes...")
+        print("\nExecutando Etapa 3: Processar registros NTR/BR OTM PRD...")
         print('------------------------------------------------------------------------------------')
         if not data_limite:
             data_limite = obter_data_limite()
@@ -125,38 +126,13 @@ def main():
                 headless=True
             )
             page = browser.new_page()
-            processar_registros_ntr_otm(page, registros, data_limite, retornar_menu, mostrar_menu)
+            processar_registros_ntrbr_otm_completo(page, registros, data_limite, retornar_menu, mostrar_menu)
             browser.close()
-        print("vencimento dos prazos concluído!")
+        # print("vencimento dos prazos concluído!")
         retornar_menu()
 
-    def etapa4():
-        print("\nExecutando Etapa 4: Processar registros NTRBR OTM PROD...")
-        print('------------------------------------------------------------------------------------')
-        folder_path = r'C:\Temp\Cadastro de Tabela'
-        with sync_playwright() as p:
-            browser = p.chromium.launch(
-                channel="chrome", # Especifica explicitamente o uso do Chrome
-                headless=True
-            )
-            page = browser.new_page()
-
-            # Chama o processamento e verifica o resultado
-            if not processar_registros_ntrbr_otm(page, retornar_menu, mostrar_menu):
-                print("Retornando ao Menu...")
-                browser.close()
-                mostrar_menu()
-                return  # Interrompe etapa3 se houve erro
-
-            browser.close()
-
-        print("Upload concluído!")
-        print()
-        mostrar_menu()
-        
-    
     def enviar_email():
-        # print("Não é permitido enviar e-mail no aplicativo teste...")
+        print("Não é permitido enviar e-mail no aplicativo teste...")
         print("\nPreparando para enviar um e-mail...")
         print('------------------------------------------------------------------------------------')
         
@@ -230,8 +206,8 @@ def main():
             "Atenciosamente."
         )
 
-        # Move arquivos para o histórico somente se não houver erros
-        mover_arquivos_para_historico(folder_path)
+        # # Move arquivos para o histórico somente se não houver erros
+        # mover_arquivos_para_historico(folder_path)
 
         # Chama a função para abrir o Gmail
         abrir_gmail(destinatarios, assunto, corpo, copia)
@@ -288,13 +264,12 @@ def main():
             "Menu Interativo",
             "Escolha uma opção:\n"
             '-----------------------------------------------\n\n'
-            "1 - Selecionar um arquivo Excel.\n\n"  # Nova opção para selecionar arquivo
-            "2 - Processar o excel e salvar arquivos.\n\n"
-            "3 - Atribuir vencimento dos registros.\n\n"
-            "4 - Realizar upload dos novos registros.\n\n"
-            "5 - Enviar e-mail.\n\n"  
-            "6 - Ajuda.\n\n"
-            "7 - Sair.\n\n"
+            "1 - Selecionar um Arquivo Excel.\n\n"  # Nova opção para selecionar arquivo
+            "2 - Processar e Salvar Arquivo.\n\n"
+            "3 - Processamento do OTM.\n\n"
+            "4 - Enviar e-mail.\n\n"  
+            "5 - Ajuda.\n\n"
+            "6 - Sair.\n\n"
             "Digite o número da opção desejada:"
         )
         
@@ -310,12 +285,10 @@ def main():
         elif opcao == "3":
             submenu(3, etapa3)
         elif opcao == "4":
-            submenu(4, etapa4)
-        elif opcao == "5":
             enviar_email()
-        elif opcao == "6":
+        elif opcao == "5":
             janela_ajuda()
-        elif opcao == "7":
+        elif opcao == "6":
             print("Encerrando o programa. Até mais!")
             break
         else:

@@ -1,13 +1,9 @@
-from curses import color_content
 import os
-from weakref import ref
 import pandas as pd
 import datetime
 from pyparsing import col
-# from build.backupRomaker.lib.numpy.testing._private.utils import clear_and_catch_warnings
-from numpy.testing._private.utils import clear_and_catch_warnings
 import listas as lst
-import sys
+
 
 
 
@@ -35,7 +31,7 @@ csv_filenames = [
     "019_RATE_GEO_ACCESSORIAL_I.csv",
     "020_RATE_PREFERENCE_IU.csv",
     "021_RATE_PREFERENCE_DETAIL_IU.csv",
-    "YADP.csv"
+    "022_RATE_GEO_STOPS_I.csv"
 ]
 
 col_idx = {
@@ -85,22 +81,22 @@ def convert_date_format(date_str):
 # Caminho da pasta onde os arquivos CSV serão salvos
 output_folder_path = r'C:\Temp\Cadastro de Tabela\templates_csv'
 
-def create_csv_001(df): #001_X_LANE_IU
+def create_csv_001(df):  # 001_X_LANE_IU
     global zone
-    output_path = os.path.join(output_folder_path, "001_X_LANE_IU.csv")
 
-    # Criar as linhas padrão
+    if df.empty:
+        print("Sem dados para o Arquivo 001_X_LANE_IU.csv. Arquivo não será gerado.")
+        return
+
+    output_path = os.path.join(output_folder_path, "001_X_LANE_IU.csv")
     lines = [
         "X_LANE",
         "X_LANE_GID,X_LANE_XID,SOURCE_GEO_HIERARCHY_GID,SOURCE_ZONE1,DEST_GEO_HIERARCHY_GID,DEST_ZONE1,DOMAIN_NAME",
         "EXEC SQL ALTER SESSION SET NLS_DATE_FORMAT = 'YYYYMMDDHH24MISS'"
     ]
-    
     unique_lines = set()
 
-    # Adicionar as linhas formatadas com base no df
     for index, row in df.iterrows():
-        # Extraindo os valores das colunas usando iloc para acessos posicionais
         code_trp = row.iloc[col_idx['COD_TRANSPORTADORA']]
         nome_trp = row.iloc[col_idx['NOME_TRANSPORTADORA']]
         tipo_tarifa = row.iloc[col_idx['TIPO_DE_TARIFA']]
@@ -112,90 +108,106 @@ def create_csv_001(df): #001_X_LANE_IU
         equipamento = row.iloc[col_idx['PERFIL_GRUPO_DE_EQUIPAMENTO']]
         desc_equipamento = row.iloc[col_idx['DESCRICAO_GRUPO_DE_EQUIPAMENTO']]
         nro_coletas = row.iloc[col_idx['NRO_COLETAS']]
-        nro_entregas = row.iloc[col_idx['NRO_ENTREGAS']] 
-        
-        domain1 = lst.domain[0]  # "NTR/BR"
-        domain2 = lst.domain[1]  # "NTR/BR."
+        nro_entregas = row.iloc[col_idx['NRO_ENTREGAS']]
+        domain1 = lst.domain[0]
+        domain2 = lst.domain[1]
         zone_value = lst.zone[0]
         subzone_value = lst.zone[1]
-        
+
         if pd.notna(origem) and origem != "" and pd.notna(destino) and destino != "":
-            formatted_line = f"{domain2}{subzone_value}_{origem}_{subzone_value}_{destino},{subzone_value}_{origem}_{subzone_value}_{destino},{zone_value},{origem},{zone_value},{destino},{domain1}"
+            formatted_line = (
+                f"{domain2}{subzone_value}_{origem}_{subzone_value}_{destino},"
+                f"{subzone_value}_{origem}_{subzone_value}_{destino},"
+                f"{zone_value},{origem},{zone_value},{destino},{domain1}"
+            )
+            # ✅ SÓ ADICIONA SE NÃO FOR VAZIO
+        if formatted_line:
             unique_lines.add(formatted_line)  # Adiciona a linha ao conjunto
 
-    # Combinar as linhas padrão com as linhas geradas
-    final_lines = lines + list(unique_lines)
+    if not unique_lines:
+        # print("Nenhuma linha válida para o Arquivo 001_X_LANE_IU.csv. Arquivo não será gerado.")
+        return
 
-    # Salvar as linhas no arquivo CSV
-    with open(output_path, 'w') as f:
+    final_lines = lines + list(unique_lines)
+    with open(output_path, 'w', encoding='utf-8') as f:
         for line in final_lines:
             f.write(line + '\n')
 
-    print(f"Arquivo 001_X_LANE_IU.csv salvo com sucesso.")
-    return 
+    print("Arquivo 001_X_LANE_IU.csv salvo com sucesso.")
+    return
 
-def create_csv_002(df): #002_CAPACITY_GROUP_IU
+def create_csv_002(df):  # 002_CAPACITY_GROUP_IU
     global zone
+
+    if df.empty:
+        print("Sem dados para o Arquivo 002_CAPACITY_GROUP_IU.csv. Arquivo não será gerado.")
+        return
+
     output_path = os.path.join(output_folder_path, "002_CAPACITY_GROUP_IU.csv")
-        
-    # Criar as linhas padrão
     lines = [
         "CAPACITY_GROUP",
         "CAPACITY_GROUP_GID,CAPACITY_GROUP_XID,CAPACITY_GROUP_NAME,SERVPROV_GID,DOMAIN_NAME",
         "EXEC SQL ALTER SESSION SET NLS_DATE_FORMAT = 'YYYYMMDDHH24MISS'"
     ]
-    
     unique_lines = set()
-    # Adicionar as linhas formatadas com base no df 
+
     for index, row in df.iterrows():
-        
-        
         code_trp = row.iloc[col_idx['COD_TRANSPORTADORA']]
         tipo_tarifa = row.iloc[col_idx['TIPO_DE_TARIFA']]
         tipo_dedicada = row.iloc[col_idx['TIPO_DE_DEDICADA']]
         nro_veiculos = row.iloc[col_idx['NRO_DE_VEICULOS']]
-    
-    domain1 = lst.domain[0]  # "NTR/BR"
-    domain2 = lst.domain[1]  # "NTR/BR."
-    domain3 = lst.domain[2]  # "NTR."
-    
-    modald_code = ''
-    type_modald = ''
-    
-    for modal_dedicada in lst.modalDedicado:
-        if isinstance(modal_dedicada, dict) and modal_dedicada["TIPO_MODAL"] == tipo_dedicada:
-            modald_code = modal_dedicada["R_C_D"]
-            type_modald = modal_dedicada["TIPO_MODAL"]
-            break 
-    
-    if type_modald == tipo_dedicada and pd.notna(tipo_dedicada) and tipo_dedicada != "" and pd.notna(nro_veiculos) and nro_veiculos != "":
-        formatted_line = f"{domain2}{modald_code}{code_trp},{modald_code}{code_trp},{tipo_dedicada},{domain3}{code_trp},{domain1}"
-        unique_lines.add(formatted_line)  # Adiciona a linha ao conjunto
+        domain1 = lst.domain[0]
+        domain2 = lst.domain[1]
+        domain3 = lst.domain[2]
 
-    # Combinar as linhas padrão com as linhas geradas
+        modald_code = ''
+        type_modald = ''
+        for modal_dedicada in lst.modalDedicado:
+            if isinstance(modal_dedicada, dict) and modal_dedicada["TIPO_MODAL"] == tipo_dedicada:
+                modald_code = modal_dedicada["R_C_D"]
+                type_modald = modal_dedicada["TIPO_MODAL"]
+                break
+
+        if (
+            type_modald == tipo_dedicada
+            and pd.notna(tipo_dedicada) and tipo_dedicada != ""
+            and pd.notna(nro_veiculos) and nro_veiculos != ""
+        ):
+            formatted_line = (
+                f"{domain2}{modald_code}{code_trp},"
+                f"{modald_code}{code_trp},{tipo_dedicada},"
+                f"{domain3}{code_trp},{domain1}"
+            )
+            unique_lines.add(formatted_line)
+
+    if not unique_lines:
+        # print("Nenhuma linha válida para o Arquivo 002_CAPACITY_GROUP_IU.csv. Arquivo não será gerado.")
+        return
+
     final_lines = lines + list(unique_lines)
-
-    # Salvar as linhas no arquivo CSV
-    with open(output_path, 'w') as f:
+    with open(output_path, 'w', encoding='utf-8') as f:
         for line in final_lines:
             f.write(line + '\n')
 
-    print(f"Arquivo 002_CAPACITY_GROUP_IU.csv salvo com sucesso.")
-    return 
+    print("Arquivo 002_CAPACITY_GROUP_IU.csv salvo com sucesso.")
+    return
 
-def create_csv_003(df): #003_CAPACITY_LIMIT_IU
-    global zone 
+def create_csv_003(df):  # 003_CAPACITY_LIMIT_IU
+    global zone
+
+    if df.empty:
+        print("Sem dados para o Arquivo 003_CAPACITY_LIMIT_IU.csv. Arquivo não será gerado.")
+        return
+
     output_path = os.path.join(output_folder_path, "003_CAPACITY_LIMIT_IU.csv")
-
-    # Criar as linhas padrão
     lines = [
         "CAPACITY_LIMIT",
-        "CAPACITY_LIMIT_GID,CAPACITY_LIMIT_XID,CAPACITY_GROUP_GID,EQUIPMENT_TYPE_GID,X_LANE_GID,TIME_PERIOD_TYPE_GID,EFFECTIVE_DATE,EXPIRATION_DATE,LIMIT,DOMAIN_NAME",
+        "CAPACITY_LIMIT_GID,CAPACITY_LIMITID,CAPACITY_GROUP_GID,EQUIPMENT_TYPE_GID,"
+        "X_LANE_GID,TIME_PERIOD_TYPE_GID,EFFECTIVE_DATE,EXPIRATION_DATE,LIMIT,DOMAIN_NAME",
         "EXEC SQL ALTER SESSION SET NLS_DATE_FORMAT = 'YYYYMMDDHH24MISS'"
     ]
-    
     unique_lines = set()
-    # Adicionar as linhas formatadas com base no df 
+
     for index, row in df.iterrows():
         code_trp = row.iloc[col_idx['COD_TRANSPORTADORA']]
         tipo_tarifa = row.iloc[col_idx['TIPO_DE_TARIFA']]
@@ -206,53 +218,61 @@ def create_csv_003(df): #003_CAPACITY_LIMIT_IU
         tarifa_preferencial = row.iloc[col_idx['TARIFA_PREFERENCIAL']]
         data_criacao = convert_date_format(row.iloc[col_idx['DATA_DE_INICIO']])
         data_expiracao = convert_date_format(row.iloc[col_idx['DATA_DE_EXPIRACAO']])
+        domain1 = lst.domain[0]
+        domain2 = lst.domain[1]
+        subzone_value = lst.zone[1]
 
-
-        domain1 = lst.domain[0]  # "NTR/BR"
-        domain2 = lst.domain[1]  # "NTR/BR."
-
-        subzone_value = lst.zone[1] # Z1
-        
         modald_code = ''
-        
         for modal_dedicada in lst.modalDedicado:
             if isinstance(modal_dedicada, dict) and modal_dedicada["TIPO_MODAL"] == tipo_dedicada:
                 modald_code = modal_dedicada["R_C_D"]
-                break 
-        
-        infos_dict = lst.infos[0]  # Acessando o único dicionário na lista
-        infos19 = infos_dict.get("EQUIPMENT_TYPE") 
+                break
+
+        infos_dict = lst.infos[0]
+        infos19 = infos_dict.get("EQUIPMENT_TYPE")
         infos18 = infos_dict.get("DAILY")
-        
-        if pd.notna(tipo_dedicada) and tipo_dedicada != "" and pd.notna(nro_veiculos) and nro_veiculos != "":
-            formatted_line = f"{domain2}{origem}_{destino}_{modald_code}{code_trp},{origem}_{destino}_{modald_code}{code_trp},{domain2}{modald_code}{code_trp},{domain2}{infos19},"\
-                             f"{domain2}{subzone_value}_{origem}_{subzone_value}_{destino},{infos18},{data_criacao},{data_expiracao},{nro_veiculos},{domain1}"
-            unique_lines.add(formatted_line)  # Adiciona a linha ao conjunto
 
-    # Combinar as linhas padrão com as linhas geradas
+        if (
+            pd.notna(tipo_dedicada) and tipo_dedicada != ""
+            and pd.notna(nro_veiculos) and nro_veiculos != ""
+        ):
+            formatted_line = (
+                f"{domain2}{origem}_{destino}_{modald_code}{code_trp},"
+                f"{origem}_{destino}_{modald_code}{code_trp},"
+                f"{domain2}{modald_code}{code_trp},{domain2}{infos19},"
+                f"{domain2}{subzone_value}_{origem}_{subzone_value}_{destino},"
+                f"{infos18},{data_criacao},{data_expiracao},{nro_veiculos},{domain1}"
+            )
+            unique_lines.add(formatted_line)
+
+    if not unique_lines:
+        # print("Nenhuma linha válida para o Arquivo 003_CAPACITY_LIMIT_IU.csv. Arquivo não será gerado.")
+        return
+
     final_lines = lines + list(unique_lines)
-
-    # Salvar as linhas no arquivo CSV
-    with open(output_path, 'w') as f:
+    with open(output_path, 'w', encoding='utf-8') as f:
         for line in final_lines:
             f.write(line + '\n')
 
-    print(f"Arquivo 003_CAPACITY_LIMIT_IU.csv salvo com sucesso.")
-    return 
+    print("Arquivo 003_CAPACITY_LIMIT_IU.csv salvo com sucesso")    
+    return
 
-def create_csv_004(df): #004_CAPACITY_USAGE_IU
+def create_csv_004(df):  # 004_CAPACITY_USAGE_IU
     global zone
+
+    if df.empty:
+        print("Sem dados para o Arquivo 004_CAPACITY_USAGE_IU.csv. Arquivo não será gerado.")
+        return
+
     output_path = os.path.join(output_folder_path, "004_CAPACITY_USAGE_IU.csv")
-    
-    # Criar as linhas padrão
     lines = [
         "CAPACITY_USAGE",
-        "CAPACITY_USAGE_GID,CAPACITY_USAGE_XID,CAPACITY_LIMIT_GID,CAPACITY_GROUP_GID,EQUIPMENT_TYPE_GID,X_LANE_GID,START_DATE,END_DATE,LIMIT,DOMAIN_NAME",
+        "CAPACITY_USAGE_GID,CAPACITY_USAGE_XID,CAPACITY_LIMITID,CAPACITY_GROUP_GID,"
+        "EQUIPMENT_TYPE_GID,X_LANE_GID,START_DATE,END_DATE,LIMIT,DOMAIN_NAME",
         "EXEC SQL ALTER SESSION SET NLS_DATE_FORMAT = 'YYYYMMDDHH24MISS'"
     ]
-    
     unique_lines = set()
-    # Adicionar as linhas formatadas com base no df 
+
     for index, row in df.iterrows():
         code_trp = row.iloc[col_idx['COD_TRANSPORTADORA']]
         tipo_tarifa = row.iloc[col_idx['TIPO_DE_TARIFA']]
@@ -262,42 +282,55 @@ def create_csv_004(df): #004_CAPACITY_USAGE_IU
         nro_veiculos = row.iloc[col_idx['NRO_DE_VEICULOS']]
         data_criacao = convert_date_format(row.iloc[col_idx['DATA_DE_INICIO']])
         data_expiracao = convert_date_format(row.iloc[col_idx['DATA_DE_EXPIRACAO']])
+        domain1 = lst.domain[0]
+        domain2 = lst.domain[1]
+        subzone_value = lst.zone[1]
 
-
-        
-        domain1 = lst.domain[0]  # "NTR/BR"
-        domain2 = lst.domain[1]  # "NTR/BR."
-  
-        subzone_value = lst.zone[1] # Z1
         modald_code = ""
-        
         for modal_dedicada in lst.modalDedicado:
             if isinstance(modal_dedicada, dict) and modal_dedicada["TIPO_MODAL"] == tipo_dedicada:
                 modald_code = modal_dedicada["R_C_D"]
-                break 
-        
-        infos_dict = lst.infos[0]  # Acessando o único dicionário na lista
-        infos19 = infos_dict.get("EQUIPMENT_TYPE") 
+                break
+
+        infos_dict = lst.infos[0]
+        infos19 = infos_dict.get("EQUIPMENT_TYPE")
         infos18 = infos_dict.get("DAILY")
-        
-        if pd.notna(tipo_dedicada) and tipo_dedicada != "" and pd.notna(nro_veiculos) and nro_veiculos != "":
-            formatted_line = f"{domain2}{origem}_{destino}_{modald_code}{code_trp},{origem}_{destino}_{modald_code}{code_trp},{domain2}{origem}_{destino}_{modald_code}{code_trp},"\
-                             f"{domain2}{modald_code}{code_trp},{domain2}{infos19},{domain2}{subzone_value}_{origem}_{subzone_value}_{destino},{data_criacao},{data_expiracao},{nro_veiculos},{domain1}"
-            unique_lines.add(formatted_line)  # Adiciona a linha ao conjunto
 
-    # Combinar as linhas padrão com as linhas geradas
+        if (
+            pd.notna(tipo_dedicada) and tipo_dedicada != ""
+            and pd.notna(nro_veiculos) and nro_veiculos != ""
+        ):
+            formatted_line = (
+                f"{domain2}{origem}_{destino}_{modald_code}{code_trp},"
+                f"{origem}_{destino}_{modald_code}{code_trp},"
+                f"{domain2}{origem}_{destino}_{modald_code}{code_trp},"
+                f"{domain2}{modald_code}{code_trp},{domain2}{infos19},"
+                f"{domain2}{subzone_value}_{origem}_{subzone_value}_{destino},"
+                f"{data_criacao},{data_expiracao},{nro_veiculos},{domain1}"
+            )
+            unique_lines.add(formatted_line)
+
+    if not unique_lines:
+        # print("Nenhuma linha válida para o Arquivo 004_CAPACITY_USAGE_IU.csv. Arquivo não será gerado.")
+        return
+
     final_lines = lines + list(unique_lines)
-
-    # Salvar as linhas no arquivo CSV
-    with open(output_path, 'w') as f:
+    with open(output_path, 'w', encoding='utf-8') as f:
         for line in final_lines:
             f.write(line + '\n')
 
-    print(f"Arquivo 004_CAPACITY_USAGE_IU.csv salvo com sucesso.")
-    return 
+    print("Arquivo 004_CAPACITY_USAGE_IU.csv salvo com sucesso.")
+    return
 
 def create_csv_005(df):     #df_commitment
     global zone
+    output_path = os.path.join(output_folder_path, "005_CAPACITY_COMMITMENT_ALLOC_IU.csv")
+
+    # Verificar se o DataFrame está vazio
+    if df.empty:
+        print("Sem dados para o Arquivo 005_CAPACITY_COMMITMENT_ALLOC_IU.csv")
+        return
+
     output_path = os.path.join(output_folder_path, "005_CAPACITY_COMMITMENT_ALLOC_IU.csv")
 
     # Criar as linhas padrão
@@ -309,49 +342,59 @@ def create_csv_005(df):     #df_commitment
     unique_lines = set()
     # Adicionar as linhas formatadas com base no df 
     for index, row in df.iterrows():
-        
-    #     # cod_seq = row[col_idx['SEQ']]      
-    #     # origem = row[col_idx['ZONA_DE_TRANSPORTE_ORIGEM']]
-    #     # descricao_origem = row[col_idx['DESCRICAO_ZONA_DE_TRANSPORTE_ORIGEM']]
-    #     # destino = row[col_idx['ZONA_DE_TRANSPORTE_DESTINO']]
-    #     # descricao_destino = row[col_idx['DESCRICAO_ZONA_DE_TRANSPORTE_DESTINO']]
-    #     # data_criacao = convert_date_format(row[col_idx['DATA_DE_INICIO']])
-    #     # data_expiracao = convert_date_format(row[col_idx['DATA_DE_EXPIRACAO']])
-    #     # cod_transp = row[col_idx['TRANSPORTADORA']]
-    #     # nro_entregas = row[col_idx['NRO_ENTREGAS']]
-    #     # vlr_porcentagem = row[col_idx['PORCENTAGEM']]
+              
+        # origem = row[col_idx['ZONA_DE_TRANSPORTE_ORIGEM']]
+        # descricao_origem = row[col_idx['DESCRICAO_ZONA_DE_TRANSPORTE_ORIGEM']]
+        # destino = row[col_idx['ZONA_DE_TRANSPORTE_DESTINO']]
+        # descricao_destino = row[col_idx['DESCRICAO_ZONA_DE_TRANSPORTE_DESTINO']]
+        # data_criacao = convert_date_format(row[col_idx['DATA_DE_INICIO']])
+        # data_expiracao = convert_date_format(row[col_idx['DATA_DE_EXPIRACAO']])
+        # cod_transp = row[col_idx['COD_TRANSPORTADORA']]
+        # nro_entregas = row[col_idx['NRO_ENTREGAS']]
+        # vlr_porcentagem = row[col_idx['PORCENTAGEM_AD_VALOREM']]
       
-    #     domain1 = lst.domain[0]  # "NTR/BR."
-    #     domain2 = lst.domain[1]  # "NTR/BR" 
+        # domain1 = lst.domain[0]  # "NTR/BR."
+        # domain2 = lst.domain[1]  # "NTR/BR" 
 
-    #     subzone_value = lst.zone[1] # Z1
-    #     commitment = "CMT_"
+        # subzone_value = lst.zone[1] # Z1
+        # commitment = "CMT_"
              
-    #     infos_dict = lst.infos[0]  # Acessando o único dicionário na lista
-    #     infos19 = infos_dict.get("EQUIPMENT_TYPE") 
-    #     infos18 = infos_dict.get("DAILY")
-    #     infos14 = infos_dict.get("SHIPMENT")
-    #     infos14 = infos_dict.get("SHIPMENT")
-    #     infos20 = infos_dict.get("MONTHLY")
+        # infos_dict = lst.infos[0]  # Acessando o único dicionário na lista
+        # infos19 = infos_dict.get("EQUIPMENT_TYPE") 
+        # infos18 = infos_dict.get("DAILY")
+        # infos14 = infos_dict.get("SHIPMENT")
+        # infos14 = infos_dict.get("SHIPMENT")
+        # infos20 = infos_dict.get("MONTHLY")
         
         
-        formatted_line ='' #f"{domain2}{commitment}{subzone_value}_{origem}_{subzone_value}_{destino},{commitment}{subzone_value}_{origem}_{subzone_value}_{destino},{data_criacao},{data_expiracao}"\
-    #                       #  f"{domain2}{subzone_value}_{origem}_{subzone_value}_{destino},{infos14},{infos14},{infos20},Y,{domain1}"
-        unique_lines.add(formatted_line)  # Adiciona a linha ao conjunto
+        formatted_line = f"" # f"{domain2}{commitment}{subzone_value}_{origem}_{subzone_value}_{destino},{commitment}{subzone_value}_{origem}_{subzone_value}_{destino},{data_criacao},{data_expiracao}"\
+    #                    f"{domain2}{subzone_value}_{origem}_{subzone_value}_{destino},{infos14},{infos14},{infos20},Y,{domain1}"
+        
+        # ✅ SÓ ADICIONA SE NÃO FOR VAZIO
+        if formatted_line:
+            unique_lines.add(formatted_line)# Adiciona a linha ao conjunto 
 
-    # Combinar as linhas padrão com as linhas geradas
+     # Verificar se há linhas únicas geradas (além do cabeçalho)
+    if not unique_lines:
+        # print("Nenhuma linha válida para o Arquivo 005_CAPACITY_COMMITMENT_ALLOC_IU.csv. Arquivo não será gerado.")
+        return
+
     final_lines = lines + list(unique_lines)
-
-    # Salvar as linhas no arquivo CSV
-    with open(output_path, 'w') as f:
+    with open(output_path, 'w', encoding='utf-8') as f:
         for line in final_lines:
             f.write(line + '\n')
 
-    print(f"Arquivo 005_CAPACITY_COMMITMENT_ALLOC_IU.csv salvo com sucesso.")
-    return 
+    print("Arquivo 005_CAPACITY_COMMITMENT_ALLOC_IU.csv salvo com sucesso.")
+    return
 
 def create_csv_006(df):     #df_commitment#
     global zone
+
+     #Verificar se o DataFrame está vazio
+    if df.empty:
+        print("Sem dados disponíveis para o Arquivo 006_CAPACITY_COMMITMENT_ALLOC_D_IU.csv.")
+        return
+    
     output_path = os.path.join(output_folder_path, "006_CAPACITY_COMMITMENT_ALLOC_D_IU.csv")
 
     # Criar as linhas padrão
@@ -363,136 +406,160 @@ def create_csv_006(df):     #df_commitment#
     unique_lines = set()
     # Adicionar as linhas formatadas com base no df 
     for index, row in df.iterrows():
-    #     cod_seq = row['SEQ']       
-    #     origem = row['ZONA_DE_TRANSPORTE_ORIGEM']
-    #     descricao_origem = row['DESCRICAO_ZONA_DE_TRANSPORTE_ORIGEM']
-    #     destino = row['ZONA_DE_TRANSPORTE_DESTINO']
-    #     descricao_destino = row['DESCRICAO_ZONA_DE_TRANSPORTE_DESTINO']
-    #     data_criacao = convert_date_format(row['DATA_DE_INICIO'])
-    #     data_expiracao = convert_date_format(row['DATA_DE_EXPIRACAO'])
-    #     cod_transp = row['TRANSPORTADORA']
-    #     nro_entregas = row['NRO_ENTREGAS']
-    #     vlr_porcentagem = row['PORCENTAGEM']
+        # cod_seq = row['SEQ']       
+        # origem = row['ZONA_DE_TRANSPORTE_ORIGEM']
+        # descricao_origem = row['DESCRICAO_ZONA_DE_TRANSPORTE_ORIGEM']
+        # destino = row['ZONA_DE_TRANSPORTE_DESTINO']
+        # descricao_destino = row['DESCRICAO_ZONA_DE_TRANSPORTE_DESTINO']
+        # data_criacao = convert_date_format(row['DATA_DE_INICIO'])
+        # data_expiracao = convert_date_format(row['DATA_DE_EXPIRACAO'])
+        # cod_transp = row['TRANSPORTADORA']
+        # nro_entregas = row['NRO_ENTREGAS']
+        # vlr_porcentagem = row['PORCENTAGEM']
    
         
-    #     domain1 = lst.domain[0]  # "NTR/BR."
-    #     domain2 = lst.domain[1]  # "NTR/BR"
-    #     domain3 = lst.domain[2]  # "NTR/BR"  
-    #     zone_value = lst.zone[0] # zone_value1
-    #     subzone_value = lst.zone[1] # Z1
-    #     commitment = "CMT_"
+        # domain1 = lst.domain[0]  # "NTR/BR."
+        # domain2 = lst.domain[1]  # "NTR/BR"
+        # domain3 = lst.domain[2]  # "NTR/BR"  
+        # zone_value = lst.zone[0] # zone_value1
+        # subzone_value = lst.zone[1] # Z1
+        # commitment = "CMT_"
               
 
-        formatted_line = '' #f"{domain1}{commitment}{subzone_value}_{origem}_{subzone_value}_{destino},{domain3}{cod_transp},{cod_seq},{vlr_porcentagem},{domain2}" 
-        unique_lines.add(formatted_line)  # Adiciona a linha ao conjunto
+        formatted_line = f"" #f"{domain1}{commitment}{subzone_value}_{origem}_{subzone_value}_{destino},{domain3}{cod_transp},{cod_seq},{vlr_porcentagem},{domain2}" 
+        
+        # ✅ SÓ ADICIONA SE NÃO FOR VAZIO
+        if formatted_line:
+            unique_lines.add(formatted_line)  # Adiciona a linha ao conjunto
 
-    # Combinar as linhas padrão com as linhas geradas
+     # Verificar se há linhas únicas geradas (além do cabeçalho)
+    if not unique_lines:
+        # print("Nenhuma linha válida para o Arquivo 006_CAPACITY_COMMITMENT_ALLOC_D_IU.csv. Arquivo não será gerado.")
+        return
+
     final_lines = lines + list(unique_lines)
 
-    # Salvar as linhas no arquivo CSV
-    with open(output_path, 'w') as f:
+    with open(output_path, 'w', encoding='utf-8') as f:
         for line in final_lines:
             f.write(line + '\n')
 
-    print(f"Arquivo 006_CAPACITY_COMMITMENT_ALLOC_D_IU.csv salvo com sucesso.")
-    return 
+    print("Arquivo 006_CAPACITY_COMMITMENT_ALLOC_D_IU.csv salvo com sucesso.")
+    return
 
-def create_csv_007(df): #007_RATE_UNIT_BREAK_PROFILE_IU
+def create_csv_007(df):  # 007_RATE_UNIT_BREAK_PROFILE_IU
+    if df.empty:
+        print("Sem dados para o Arquivo 007_RATE_UNIT_BREAK_PROFILE_IU.csv. Arquivo não será gerado.")
+        return
+
     output_path = os.path.join(output_folder_path, "007_RATE_UNIT_BREAK_PROFILE_IU.csv")
-
-    # Criar as linhas padrão
     lines = [
         "RATE_UNIT_BREAK_PROFILE",
-        "RATE_UNIT_BREAK_PROFILE_GID,RATE_UNIT_BREAK_PROFILE_XID,RATE_UNIT_BREAK_PROFILE_NAME,DATA_TYPE,LOOKUP_TYPE,UOM_TYPE,DOMAIN_NAME",
+        "RATE_UNIT_BREAK_PROFILE_GID,RATE_UNIT_BREAK_PROFILE_XID,RATE_UNIT_BREAK_PROFILE_NAME,"
+        "DATA_TYPE,LOOKUP_TYPE,UOM_TYPE,DOMAIN_NAME",
         "EXEC SQL ALTER SESSION SET NLS_DATE_FORMAT = 'YYYYMMDDHH24MISS'"
     ]
     unique_lines = set()
-    # Adicionar as linhas formatadas com base no df 
+
     for index, row in df.iterrows():
         code_trp = row.iloc[col_idx['COD_TRANSPORTADORA']]
         tipo_tarifa = row.iloc[col_idx['TIPO_DE_TARIFA']]
         rede_farma = ""
-        
-        domain1 = lst.domain[0]  # "NTR/BR"
-        domain2 = lst.domain[1]  # "NTR/BR."
- 
-        unit_dict = lst.unit[0] 
+        domain1 = lst.domain[0]
+        domain2 = lst.domain[1]
+        unit_dict = lst.unit[0]
         unit_cod = unit_dict.get("UNIDADE")
         unit_type = unit_dict.get("UOM_TYPE")
-        
- 
-        farma_dict = lst.farma[0] 
-        cod_farma = farma_dict.get("REDE_FARMA")  
-        cod_transp = farma_dict.get("COD_TRANSPORTADORA")  
+        farma_dict = lst.farma[0]
+        cod_farma = farma_dict.get("REDE_FARMA")
+        cod_transp = farma_dict.get("COD_TRANSPORTADORA")
 
-        
-        if (tipo_tarifa in ["RODOVIARIO", "CONSOLIDADO", "DIRETO", "REDESPACHO"] and unit_cod == rede_farma and rede_farma == cod_farma and code_trp == cod_transp ):
-            formatted_line = f"{domain2}{code_trp}_{rede_farma},{code_trp}_{rede_farma},{rede_farma},N,M,{unit_type},{domain1}"
-            unique_lines.add(formatted_line)  # Adiciona a linha ao conjunto
+        if (
+            tipo_tarifa in ["RODOVIARIO", "CONSOLIDADO", "DIRETO", "REDESPACHO"]
+            and unit_cod == rede_farma
+            and rede_farma == cod_farma
+            and code_trp == cod_transp
+        ):
+            formatted_line = (
+                f"{domain2}{code_trp}_{rede_farma},"
+                f"{code_trp}_{rede_farma},{rede_farma},N,M,{unit_type},{domain1}"
+            )
+            unique_lines.add(formatted_line)
 
-    # Combinar as linhas padrão com as linhas geradas
+    if not unique_lines:
+        # print("Nenhuma linha válida para o Arquivo 007_RATE_UNIT_BREAK_PROFILE_IU.csv. Arquivo não será gerado.")
+        return
+
     final_lines = lines + list(unique_lines)
-
-    # Salvar as linhas no arquivo CSV
-    with open(output_path, 'w') as f:
+    with open(output_path, 'w', encoding='utf-8') as f:
         for line in final_lines:
             f.write(line + '\n')
 
-    print(f"Arquivo 007_RATE_UNIT_BREAK_PROFILE_IU.csv salvo com sucesso.")
-    return 
+    print("Arquivo 007_RATE_UNIT_BREAK_PROFILE_IU.csv salvo com sucesso.")
+    return
 
-def create_csv_008(df): #008_RATE_UNIT_BREAK_IU.csv
+def create_csv_008(df):  # 008_RATE_UNIT_BREAK_IU.csv
     global zone
-    output_path = os.path.join(output_folder_path, "008_RATE_UNIT_BREAK_IU.csv")
 
-    # Criar as linhas padrão
+    if df.empty:
+        print("Sem dados para o Arquivo 008_RATE_UNIT_BREAK_IU.csv. Arquivo não será gerado.")
+        return
+
+    output_path = os.path.join(output_folder_path, "008_RATE_UNIT_BREAK_IU.csv")
     lines = [
         "RATE_UNIT_BREAK",
         "RATE_UNIT_BREAK_GID,RATE_UNIT_BREAK_XID,RATE_UNIT_BREAK_PROFILE_GID,RATE_UNIT_BREAK_MAX,DOMAIN_NAME",
         "EXEC SQL ALTER SESSION SET NLS_DATE_FORMAT = 'YYYYMMDDHH24MISS'"
     ]
-    
     unique_lines = set()
-    # Adicionar as linhas formatadas com base no df 
+
     for index, row in df.iterrows():
         code_trp = row.iloc[col_idx['COD_TRANSPORTADORA']]
         tipo_tarifa = row.iloc[col_idx['TIPO_DE_TARIFA']]
         rede_farma = ""
-        
-        domain1 = lst.domain[0]  # "NTR/BR"
-        domain2 = lst.domain[1]  # "NTR/BR."
- 
-        unit_dict = lst.unit[0] 
+        domain1 = lst.domain[0]
+        domain2 = lst.domain[1]
+        unit_dict = lst.unit[0]
         unit_cod = unit_dict.get("UNIDADE")
         unit_type = unit_dict.get("UOM_TYPE")
         unit_sigla = unit_dict.get("SIGLAS_UNIDADE")
-        
- 
-        farma_dict = lst.farma[0] 
-        cod_farma = farma_dict.get("REDE_FARMA")  
-        cod_transp = farma_dict.get("COD_TRANSPORTADORA") 
-        qtd_min = farma_dict.get("QTD_MINIMA") 
+        farma_dict = lst.farma[0]
+        cod_farma = farma_dict.get("REDE_FARMA")
+        cod_transp = farma_dict.get("COD_TRANSPORTADORA")
+        qtd_min = farma_dict.get("QTD_MINIMA")
         qtd_max = farma_dict.get("QTD_MAXIMA")
 
-        
-        if (tipo_tarifa in ["RODOVIARIO", "CONSOLIDADO", "DIRETO", "REDESPACHO"] and unit_cod == rede_farma and rede_farma == cod_farma and code_trp == cod_transp ):
-            formatted_line = f"{domain2}{code_trp}_{rede_farma}_{qtd_min}-{qtd_max},{rede_farma},{code_trp}_{rede_farma}_{qtd_min}-{qtd_max},"\
-                            f"{domain2}{code_trp}_{rede_farma},{qtd_min},,{unit_sigla},{domain1}"
-            unique_lines.add(formatted_line)  # Adiciona a linha ao conjunto
+        if (
+            tipo_tarifa in ["RODOVIARIO", "CONSOLIDADO", "DIRETO", "REDESPACHO"]
+            and unit_cod == rede_farma
+            and rede_farma == cod_farma
+            and code_trp == cod_transp
+        ):
+            formatted_line = (
+                f"{domain2}{code_trp}_{rede_farma}_{qtd_min}-{qtd_max},"
+                f"{rede_farma},{code_trp}_{rede_farma}_{qtd_min}-{qtd_max},"
+                f"{domain2}{code_trp}_{rede_farma},{qtd_min},,{unit_sigla},{domain1}"
+            )
+            unique_lines.add(formatted_line)
 
-    # Combinar as linhas padrão com as linhas geradas
+    if not unique_lines:
+        # print("Nenhuma linha válida para o Arquivo 008_RATE_UNIT_BREAK_IU.csv. Arquivo não será gerado.")
+        return
+
     final_lines = lines + list(unique_lines)
-
-    # Salvar as linhas no arquivo CSV
-    with open(output_path, 'w') as f:
+    with open(output_path, 'w', encoding='utf-8') as f:
         for line in final_lines:
             f.write(line + '\n')
 
-    print(f"Arquivo 008_RATE_UNIT_BREAK_UI.csv salvo com sucesso.")
-    return 
+    print("Arquivo 008_RATE_UNIT_BREAK_IU.csv salvo com sucesso.")
+    return
 
 def create_csv_009(df): #009_RATE_OFFERING_IU
     global modal
+
+    if df.empty: 
+        print("Sem dados para o Arquivo 009_RATE_OFFERING_IU.csv. Arquivo não será gerado.") 
+        return
+    
     output_path = os.path.join(output_folder_path, "009_RATE_OFFERING_IU.csv")
 
     # Criar as linhas padrão
@@ -590,6 +657,10 @@ def create_csv_009(df): #009_RATE_OFFERING_IU
                                 f"{tipo_dedicada},{vlr_contrato},"
                 unique_lines.add(formatted_line)  # Adiciona a linha ao conjunto
 
+    if not unique_lines: 
+        # print("Nenhuma linha válida para o Arquivo 009_RATE_OFFERING_IU.csv. Arquivo não será gerado.") 
+        return
+    
     # Combinar as linhas padrão com as linhas geradas
     final_lines = lines + list(unique_lines)
 
@@ -603,6 +674,11 @@ def create_csv_009(df): #009_RATE_OFFERING_IU
 
 def create_csv_010(df): #010_CM_RULE_IU
     global zone
+
+    if df.empty: 
+        print("Sem dados para o Arquivo 010_CM_RULE_IU.csv. Arquivo não será gerado.") 
+        return
+    
     output_path = os.path.join(output_folder_path, "010_CM_RULE_IU.csv")
     
     # Criar as linhas padrão
@@ -654,6 +730,10 @@ def create_csv_010(df): #010_CM_RULE_IU
                 formatted_line = f"{domain2}{modald_code}{code_trp},{domain2}{"BR-BR"},{domain1}"
                 unique_lines.add(formatted_line) 
     
+    if not unique_lines: 
+        # print("Nenhuma linha válida para o Arquivo 010_CM_RULE_IU.csv. Arquivo não será gerado.") 
+        return
+
     # Combinar as linhas padrão com as linhas geradas
     final_lines = lines + list(unique_lines)
 
@@ -667,6 +747,11 @@ def create_csv_010(df): #010_CM_RULE_IU
 
 def create_csv_011(df): #011_RATE_GEO_I
     global zone
+
+    if df.empty: 
+        print("Sem dados para o Arquivo 011_RATE_GEO_I.csv. Arquivo não será gerado.") 
+        return
+
     output_path = os.path.join(output_folder_path, "011_RATE_GEO_I.csv")
 
     # Criar as linhas padrão
@@ -766,9 +851,7 @@ def create_csv_011(df): #011_RATE_GEO_I
                 return 'NTR/BR.TMS_RS_TL_OBC'
             elif 'RT224' in equipamento or 'AT224' in equipamento or '226' in equipamento:
                 return 'NTR/BR.TMS_RS_TL_OBR'
-            elif 'BE' in equipamento:
-                return 'NTR/BR.TMS_RS_TL_OBE'
-            elif 'CBC40' in equipamento:
+            elif 'BE' in equipamento or 'CBC40' in equipamento:
                 return 'NTR/BR.TMS_RS_TL_OBE'
             #'TMS_RS_VESSEL'
 
@@ -777,12 +860,12 @@ def create_csv_011(df): #011_RATE_GEO_I
         serviced_rate = determinar_rate_service(equipamento)
         
                
-        if tipo_tarifa == type_modal and type_tarifa != "CONSOLIDADO":   
+        if tipo_tarifa == type_modal and type_tarifa != "CONSOLIDADO" or  (tipo_tarifa == "SPOT" and (nro_coletas > 1 or nro_entregas > 1)):   
             formatted_line = f"{domain2}{data_criacao}_{code_trp}_{origem}_{destino}_{modal_sigla}_{equipamento},{data_criacao}_{code_trp}_{origem}_{destino}_{modal_sigla}_{equipamento},"\
-                            f"{domain2}{modal_code}{code_trp},{domain2}{subzone_value}_{origem}_{subzone_value}_{destino},{domain2}{equipamento},,{infos7},{pickup},{stops},{effective_data},{expiration_data},"\
+                            f"{domain2}{modal_code}{code_trp},{domain2}{subzone_value}_{origem}_{subzone_value}_{destino},{domain2}{equipamento},,{infos7},{nro_coletas},{nro_entregas},{effective_data},{expiration_data},"\
                             f"{domain1},Y,{percent_ida},{service_rate},{operacao},{tipo_tarifa},{tipo_dedicada},,,{desc_equipamento},," 
             unique_lines.add(formatted_line)
-        elif tipo_tarifa == type_modal and type_tarifa == "CONSOLIDADO":
+        elif tipo_tarifa == type_modal and type_tarifa == "CONSOLIDADO" or  (tipo_tarifa == "SPOT" and (nro_coletas > 1 or nro_entregas > 1)):
             formatted_line = f"{domain2}{data_criacao}_{code_trp}_{origem}_{destino}_{modal_sigla}_{equipamento},{data_criacao}_{code_trp}_{origem}_{destino}_{modal_sigla}_{equipamento},"\
                             f"{domain2}{modal_code}{code_trp},{domain2}{subzone_value}_{origem}_{subzone_value}_{destino},{domain2}{equipamento},,{infos7},{nro_coletas},{nro_entregas},{effective_data},{expiration_data},"\
                             f"{domain1},Y,{percent_ida},{service_rate},{operacao},{tipo_tarifa},{tipo_dedicada},,,{desc_equipamento},," 
@@ -799,8 +882,13 @@ def create_csv_011(df): #011_RATE_GEO_I
         # Divide a string no separador de campo por vírgula e retire o penúltimo campo
         return formatted_line.split(',')[-6].strip()
 
+    if not unique_lines: 
+        # print("Nenhuma linha válida para o Arquivo 011_RATE_GEO_I.csv. Arquivo não será gerado.") 
+        return
+    
     sorted_unique_lines = sorted(unique_lines, key=get_penultimate_field)
     
+
     # Combinar as linhas padrão com as linhas geradas
     final_lines = lines + sorted_unique_lines
     # final_lines = lines + list(unique_lines)
@@ -815,6 +903,11 @@ def create_csv_011(df): #011_RATE_GEO_I
 
 def create_csv_012(df): #012_RATE_GEO_REFNUM_I
     global zone
+
+    if df.empty: 
+        print("Sem dados para o Arquivo 012_RATE_GEO_REFNUM_I.csv. Arquivo não será gerado.") 
+        return
+
     output_path = os.path.join(output_folder_path, "012_RATE_GEO_REFNUM_I.csv")
 
     # Criar as linhas padrão
@@ -829,7 +922,6 @@ def create_csv_012(df): #012_RATE_GEO_REFNUM_I
     for index, row in df.iterrows():
         # Extraindo os valores das colunas G e I usando iloc
         code_trp = row.iloc[col_idx['COD_TRANSPORTADORA']]
-        nome_trp = row.iloc[col_idx['NOME_TRANSPORTADORA']]
         tipo_tarifa = row.iloc[col_idx['TIPO_DE_TARIFA']]
         tipo_dedicada = row.iloc[col_idx['TIPO_DE_DEDICADA']]
         operacao = row.iloc[col_idx['OPERACAO']]
@@ -841,9 +933,8 @@ def create_csv_012(df): #012_RATE_GEO_REFNUM_I
         descricao_destino = row.iloc[col_idx['DESCRICAO_ZONA_DE_TRANSPORTE_DESTINO']]
         equipamento = row.iloc[col_idx['PERFIL_GRUPO_DE_EQUIPAMENTO']]
         ad_valorem = row.iloc[col_idx['PORCENTAGEM_AD_VALOREM']]
-        descricao_equipamento = row.iloc[col_idx['DESCRICAO_GRUPO_DE_EQUIPAMENTO']]
         data_criacao = convert_date_format(row.iloc[col_idx['DATA_DE_INICIO']])
-        data_expiracao = convert_date_format(row.iloc[col_idx['DATA_DE_EXPIRACAO']])
+
 
 
         
@@ -987,6 +1078,9 @@ def create_csv_012(df): #012_RATE_GEO_REFNUM_I
                 formatted_line = f"{domain2}{data_criacao}_{code_trp}_{origem}_{destino}_{modal_sigla}_{equipamento},{domain3}{ref_transp},{code_trp},{domain1}"   
                 unique_lines.add(formatted_line) 
         
+    if not unique_lines: 
+        # print("Nenhuma linha válida para o Arquivo 012_RATE_GEO_REFNUM_I.csv. Arquivo não será gerado.") 
+        return
 
     # Ordenar as linhas únicas pelo penúltimo campo
     def get_penultimate_field(formatted_line):
@@ -1009,6 +1103,11 @@ def create_csv_012(df): #012_RATE_GEO_REFNUM_I
 
 def create_csv_013(df): # 013_RG_SPECIAL_SERVICE_I
     global zone
+
+    if df.empty:
+        print("Sem dados para o Arquivo 013_RG_SPECIAL_SERVICE_I.csv. Arquivo não será gerado.")
+        return
+    
     output_path = os.path.join(output_folder_path, "013_RG_SPECIAL_SERVICE_I.csv")
 
     # Criar as linhas padrão
@@ -1054,18 +1153,25 @@ def create_csv_013(df): # 013_RG_SPECIAL_SERVICE_I
             formatted_line = f"{domain1}{data_criacao}_{code_trp}_{origem}_{destino}_{modal_sigla}_E_{equipamento},{domain3}{infos16},{domain2}"  
             unique_lines.add(formatted_line)  # Adiciona a linha ao conjunto
 
-    # Combinar as linhas padrão com as linhas geradas
-    final_lines = lines + list(unique_lines)
+    
+    if not unique_lines:
+        # print("Nenhuma linha válida para o Arquivo 013_RG_SPECIAL_SERVICE_I.csv. Arquivo não será gerado.")
+        return
 
-    # Salvar as linhas no arquivo CSV
-    with open(output_path, 'w') as f:
+    final_lines = lines + list(unique_lines)
+    with open(output_path, 'w', encoding='utf-8') as f:
         for line in final_lines:
             f.write(line + '\n')
 
-    print(f"Arquivo 013_RG_SPECIAL_SERVICE_I.csv salvo com sucesso.")
+    print("Arquivo 013_RG_SPECIAL_SERVICE_I.csv salvo com sucesso.")
     return 
 
 def create_csv_014(df): #014_RATE_GEO_COST_GROUP_I
+
+    if df.empty: 
+        print("Sem dados para o Arquivo 014_RATE_GEO_COST_GROUP_I.csv. Arquivo não será gerado.") 
+        return
+
     output_path = os.path.join(output_folder_path, "014_RATE_GEO_COST_GROUP_I.csv")
 
     # Criar as linhas padrão
@@ -1128,6 +1234,10 @@ def create_csv_014(df): #014_RATE_GEO_COST_GROUP_I
                                 f"{domain2}{data_criacao}_{code_trp}_{origem}_{destino}_{modal_sigla}_{equipamento},1,A,{domain1}"    
                 unique_lines.add(formatted_line)  # Adiciona a linha ao conjunto
 
+    if not unique_lines: 
+        # print("Nenhuma linha válida para o Arquivo 014_RATE_GEO_COST_GROUP_I.csv. Arquivo não será gerado.") 
+        return
+
     def get_penultimate_field(formatted_line):
         # Divide a string no separador de campo por vírgula e retire o penúltimo campo
         return formatted_line.split(',')[-4].strip()
@@ -1146,6 +1256,11 @@ def create_csv_014(df): #014_RATE_GEO_COST_GROUP_I
     return 
 
 def create_csv_015(df): #015_RATE_GEO_COST_I
+    global zone
+    if df.empty: 
+        print("Sem dados para o Arquivo 015_RATE_GEO_COST_I.csv. Arquivo não será gerado.") 
+        return
+
     output_path = os.path.join(output_folder_path, "015_RATE_GEO_COST_I.csv")
 
     # Criar as linhas padrão
@@ -1160,28 +1275,15 @@ def create_csv_015(df): #015_RATE_GEO_COST_I
     for index, row in df.iterrows():
         # Extraindo os valores das colunas G e I usando iloc
         code_trp = row.iloc[col_idx['COD_TRANSPORTADORA']]
-        nome_trp = row.iloc[col_idx['NOME_TRANSPORTADORA']]
         tipo_tarifa = row.iloc[col_idx['TIPO_DE_TARIFA']]
         tipo_dedicada = row.iloc[col_idx['TIPO_DE_DEDICADA']]
-        porcentagem_ida = row.iloc[col_idx['%_DO_TRAJETO_DA_FD']]
-        operacao = row.iloc[col_idx['OPERACAO']]
         origem = row.iloc[col_idx['ZONA_DE_TRANSPORTE_ORIGEM']]
-        descricao_origem = row.iloc[col_idx['DESCRICAO_ZONA_DE_TRANSPORTE_ORIGEM']]
         destino = row.iloc[col_idx['ZONA_DE_TRANSPORTE_DESTINO']]
-        descricao_destino = row.iloc[col_idx['DESCRICAO_ZONA_DE_TRANSPORTE_DESTINO']]
         equipamento = row.iloc[col_idx['PERFIL_GRUPO_DE_EQUIPAMENTO']]
-        descricao_equipamento = row.iloc[col_idx['DESCRICAO_GRUPO_DE_EQUIPAMENTO']]
         custo_base = row.iloc[col_idx['CUSTO_BASE']]
         abast_cds = row.iloc[col_idx['ABASTECIMENTO_CDS']]
-        redespacho = row.iloc[col_idx['REDESPACHO']]
         revista = row.iloc[col_idx['REVISTA']]
-        ajudante = row.iloc[col_idx['AJUDANTE']]
-        pedagio = str(row.iloc[col_idx['PEDAGIO']]).replace(",", ".") if pd.notna(row.iloc[col_idx['PEDAGIO']]) else ""
-        valor_de_contrato = row.iloc[col_idx['VALOR_DE_CONTRATO']]
-        nro_veiculos = row.iloc[col_idx['NRO_DE_VEICULOS']]
-        tarifa_preferencial = row.iloc[col_idx['TARIFA_PREFERENCIAL']]
         data_criacao = convert_date_format(row.iloc[col_idx['DATA_DE_INICIO']])
-        data_expiracao = convert_date_format(row.iloc[col_idx['DATA_DE_EXPIRACAO']])
         nro_coletas = row.iloc[col_idx['NRO_COLETAS']]
         nro_entregas = row.iloc[col_idx['NRO_ENTREGAS']]
 
@@ -1374,7 +1476,7 @@ def create_csv_015(df): #015_RATE_GEO_COST_I
         ]
         
         
-        if (tipo_tarifa == type_modal and abast_cds != '' and tipo_tarifa not in ["DIRETO", "CABOTAGEM", "REDESPACHO"] and (origem, destino) not in pares_origem_destino):
+        if (tipo_tarifa == type_modal and abast_cds != '' and tipo_tarifa not in ["DIRETO", "CABOTAGEM", "REDESPACHO"] and not (tipo_tarifa == "SPOT" and (nro_coletas == 1 and nro_entregas == 1)) and (origem, destino) not in pares_origem_destino):
             if modal_sigla:
                 if nro_coletas > 1:
                     formatted_line = f"{domain2}{data_criacao}_{code_trp}_{origem}_{destino}_{modal_sigla}_{equipamento},10,{costc_op1},{costc_operand1},{costc_low_value},{costc_or1},"\
@@ -1388,10 +1490,10 @@ def create_csv_015(df): #015_RATE_GEO_COST_I
                     unique_lines.add(formatted_line)
                      
                               
-        if (tipo_tarifa == type_modal and tipo_tarifa not in ["DIRETO", "CABOTAGEM", "REDESPACHO"] and custo_base != ''):
+        if (tipo_tarifa == type_modal and tipo_tarifa not in ["DIRETO", "CABOTAGEM", "REDESPACHO"] and not (tipo_tarifa == "SPOT" and (nro_coletas == 1 and nro_entregas == 1)) and custo_base != ''):
             if modal_sigla:
                 formatted_line = f"{domain2}{data_criacao}_{code_trp}_{origem}_{destino}_{modal_sigla}_{equipamento},{custo_seq},,,,,,,,,,,,,,,,"\
-                                f"{custo_base if tipo_tarifa == "CONSOLIDADO" else ''},,,{custo_currency},,{custo_unit},{custo_multiplier},,{custo_ctype},,,{domain1}"
+                                f"{custo_base if (tipo_tarifa == "CONSOLIDADO" or (tipo_tarifa == "SPOT" and (nro_coletas > 1 or nro_entregas > 1))) else ''},,,{custo_currency},,{custo_unit},{custo_multiplier},,{custo_ctype},,,{domain1}"
                 unique_lines.add(formatted_line)
        
         if (tipo_dedicada == type_modald and tipo_tarifa == type_tariff and unit_unit == "FIXO"):
@@ -1407,7 +1509,7 @@ def create_csv_015(df): #015_RATE_GEO_COST_I
                                 f"REVISTA,{revista},,,{costc_currency},,{costc_unit},{costc_multiplier},,{costc_ctype},,,{domain1}" 
                 unique_lines.add(formatted_line)               
               
-        if (tipo_tarifa == type_modal and tipo_tarifa in ['CABOTAGEM', 'DIRETO', 'RODOVIARIO', "REDESPACHO"] and tipo_tarifa == type_tariff):
+        if (tipo_tarifa == type_modal and tipo_tarifa in ['CABOTAGEM', 'DIRETO', 'RODOVIARIO', 'REDESPACHO'] or (tipo_tarifa == "SPOT" and (nro_coletas == 1 and nro_entregas == 1)) and tipo_tarifa == type_tariff):
             if modal_sigla:
                 formatted_line = f"{domain2}{data_criacao}_{code_trp}_{origem}_{destino}_{modal_sigla}_{equipamento},3,,,,,"\
                                 f",,,,,,,,,,,"\
@@ -1420,6 +1522,10 @@ def create_csv_015(df): #015_RATE_GEO_COST_I
         #                         f"{cost_mc_op2},{cost_mc_operand2},{cost_mc_low_value2},{cost_mc_or2},{cost_mc_op3},{cost_mc_operand3},{cost_mc_low_value3},{cost_mc_or3},{cost_mc_op4},{cost_mc_operand4},{cost_mc_low_value4},"\
         #                         f",,{desconto_mc},{cost_mc_action},{cost_mc_currency},,{cost_mc_unit},{cost_mc_multiplier},,{cost_mc_ctype},,{cost_mc_category},{domain1}"
         #         unique_lines.add(formatted_line)          
+
+    if not unique_lines: 
+        print("Nenhuma linha válida para o Arquivo 015_RATE_GEO_COST_I.csv. Arquivo não será gerado.") 
+        return
 
     def get_penultimate_field(formatted_line):
         # Divide a string no separador de campo por vírgula e retire o penúltimo campo
@@ -1440,6 +1546,11 @@ def create_csv_015(df): #015_RATE_GEO_COST_I
     return 
 
 def create_csv_016(df): # 016_RATE_GEO_COST_UNIT_BREAK_I ***** TABELA DADOS_RATE_AEREO ****
+    global zone
+    if df.empty: 
+        print("Sem dados para o Arquivo 016_RATE_GEO_COST_UNIT_BREAK_I.csv. Arquivo não será gerado.") 
+        return
+
     output_path = os.path.join(output_folder_path, "016_RATE_GEO_COST_UNIT_BREAK_I.csv")
 
     # Criar as linhas padrão
@@ -1523,8 +1634,15 @@ def create_csv_016(df): # 016_RATE_GEO_COST_UNIT_BREAK_I ***** TABELA DADOS_RATE
         unidade = unit_dict.get("UNIDADE") 
         
         
-        formatted_line = ''
-        unique_lines.add(formatted_line)  # Adiciona a linha ao conjunto
+        formatted_line = f''
+
+    # ✅ SÓ ADICIONA SE NÃO FOR VAZIO
+        if formatted_line:
+            unique_lines.add(formatted_line)  # Adiciona a linha ao conjunto
+            
+    if not unique_lines: 
+        # print("Nenhuma linha válida para o Arquivo 016_RATE_GEO_COST_UNIT_BREAK_I.csv. Arquivo não será gerado.") 
+        return
 
     # Combinar as linhas padrão com as linhas geradas
     final_lines = lines + list(unique_lines)
@@ -1538,6 +1656,11 @@ def create_csv_016(df): # 016_RATE_GEO_COST_UNIT_BREAK_I ***** TABELA DADOS_RATE
     return 
 
 def create_csv_017(df): #017_ACCESSORIAL_COST_IU
+    global zone
+    if df.empty: 
+        print("Sem dados para o Arquivo 017_ACCESSORIAL_COST_IU.csv. Arquivo não será gerado.") 
+        return
+
     output_path = os.path.join(output_folder_path, "017_ACCESSORIAL_COST_IU.csv")
 
     # Criar as linhas padrão
@@ -1728,13 +1851,13 @@ def create_csv_017(df): #017_ACCESSORIAL_COST_IU
             ("AM1302606", "SP0388800"),
         ]
         
-        if tipo_tarifa == "CONSOLIDADO" and tipo_tarifa == type_modal and (origem, destino) in pares_origem_destino:
+        if ((tipo_tarifa == "CONSOLIDADO" or (tipo_tarifa == "SPOT" and (nro_coletas > 1 or nro_entregas > 1))) and tipo_tarifa == type_modal and (origem, destino) in pares_origem_destino):
             if modal_sigla:
                 formatted_line = f"{domain2}{data_criacao}_{code_trp}_{origem}_{destino}_{modal_sigla}_{equipamento}_{cod_parada},"\
                                 f"{data_criacao}_{code_trp}_{origem}_{destino}_{modal_sigla}_{equipamento}_{cod_parada},"\
                                 f",,,,,,,,,,,{cod_parada2},{abastecimento_cds},{infos7},1,,{domain2}{cod_parada3},Y,,{domain1},{cod_parada5}"
                 unique_lines.add(formatted_line)  # Adiciona a linha ao conjunto
-               
+
         if tipo_tarifa == "CABOTAGEM" and tipo_tarifa == type_modal and redespacho not in ["", "0.00", "0", "0.0", 0.00, 0, 0.0]:
             if modal_sigla:
                 formatted_line = f"{domain2}{data_criacao}_{code_trp}_{origem}_{destino}_{modal_sigla}_{equipamento}_{cod_parada},"\
@@ -1749,7 +1872,7 @@ def create_csv_017(df): #017_ACCESSORIAL_COST_IU
                                 f",,,,,,,,,,,{cod_pedagio2},{vlr_pedagio},{infos7},1,,{domain2}{cod_pedagio3},Y,,{domain1},{cod_pedagio5}"           
                 unique_lines.add(formatted_line)  # Adiciona a linha ao conjunto
         
-        if tipo_tarifa in ["RODOVIARIO", "CONSOLIDADO", "CABOTAGEM", "DIRETO", "REDESPACHO"] and tipo_tarifa == type_modal and vlr_pedagio not in ["", "0.00", "0", "0.0", 0.00, 0, 0.0]:
+        if tipo_tarifa in ["RODOVIARIO", "CONSOLIDADO", "CABOTAGEM", "DIRETO", "REDESPACHO", "SPOT"] and tipo_tarifa == type_modal and vlr_pedagio not in ["", "0.00", "0", "0.0", 0.00, 0, 0.0]:
             if modal_sigla:
                 formatted_line = f"{domain2}{data_criacao}_{code_trp}_{origem}_{destino}_{modal_sigla}_{equipamento}_{cod_pedagio},"\
                                 f"{data_criacao}_{code_trp}_{origem}_{destino}_{modal_sigla}_{equipamento}_{cod_pedagio},"\
@@ -1770,7 +1893,7 @@ def create_csv_017(df): #017_ACCESSORIAL_COST_IU
                                 f",,,,,,,,,,,{custof_por},,{infos7},1,,{domain2}{custof_cost},Y,,{domain1},{custof_ctype}"          
                 unique_lines.add(formatted_line)  # Adiciona a linha ao conjunto 
                 
-        if tipo_tarifa in ["RODOVIARIO", "CONSOLIDADO", "CABOTAGEM", "DIRETO", "REDESPACHO"] and tipo_tarifa  == type_modal and pd.notna(ajudante) and ajudante not in ["", "0.00", "0", "0.0", 0.00, 0, 0.0]:
+        if tipo_tarifa in ["RODOVIARIO", "CONSOLIDADO", "CABOTAGEM", "DIRETO", "REDESPACHO", "SPOT"] and tipo_tarifa  == type_modal and pd.notna(ajudante) and ajudante not in ["", "0.00", "0", "0.0", 0.00, 0, 0.0]:
             if modal_sigla:
                 formatted_line = f"{domain2}{code_trp}_{ajudante_nome}_{modal_sigla},{code_trp}_{ajudante_nome}_{modal_sigla},"\
                                 f"{ajudante_left_operand1},{ajudante_oper1},{ajudante_lowvalue1},,,,,,,,,{ajudante_por},{ajudante},{infos7},1,,{domain2}{ajudante_cost},"\
@@ -1790,7 +1913,11 @@ def create_csv_017(df): #017_ACCESSORIAL_COST_IU
                                 f"{data_criacao}_{code_trp}_{origem}_{destino}_{modald_sigla}_{equipamento}_{advalorem_cod},"\
                                 f",,,,,,,,,,,{advalorem_por},{ad_valorem},{infos7},1,,{domain2}{advalorem_cost},N,,{domain1},{advalorem_ctype}"         
                 unique_lines.add(formatted_line)  # Adiciona a linha ao conjunto 
-                           
+
+        if not unique_lines: 
+            # print("Nenhuma linha válida para o Arquivo 017_ACCESSORIAL_COST_IU.csv. Arquivo não será gerado.") 
+            return
+
         def extract_relevant_field(formatted_line, identifiers):
             # Divide a string no separador de campo por vírgula
             fields = formatted_line.split('_')
@@ -1820,6 +1947,11 @@ def create_csv_017(df): #017_ACCESSORIAL_COST_IU
     return 
 
 def create_csv_018(df): #018_ACCESSORIAL_COST_UNIT_BREAK_IU
+    global zone
+    if df.empty: 
+        print("Sem dados para o Arquivo 018_ACCESSORIAL_COST_UNIT_BREAK_IU.csv. Arquivo não será gerado.") 
+        return
+
     output_path = os.path.join(output_folder_path, "018_ACCESSORIAL_COST_UNIT_BREAK_IU.csv")
 
     # Criar as linhas padrão
@@ -1875,6 +2007,11 @@ def create_csv_018(df): #018_ACCESSORIAL_COST_UNIT_BREAK_IU
             formatted_line = '' #f"{domain2}{code_trp}_{rede},{domain2}{code_trp}_{rede}_{qtd_min}-{qtd_max},"\
                                 #f"{domain2}{code_trp}_{rede}_{qtd_min}-{qtd_max},,{infos7},{domain1}"
             unique_lines.add(formatted_line)  # Adiciona a linha ao conjunto
+
+    if not unique_lines: 
+        # print("Nenhuma linha válida para o Arquivo 018_ACCESSORIAL_COST_UNIT_BREAK_IU.csv. Arquivo não será gerado.") 
+        return
+
     # Combinar as linhas padrão com as linhas geradas
     final_lines = lines + list(unique_lines)
 
@@ -1887,6 +2024,11 @@ def create_csv_018(df): #018_ACCESSORIAL_COST_UNIT_BREAK_IU
     return 
 
 def create_csv_019(df): #019_RATE_GEO_ACCESSORIAL_I
+    global zone
+    if df.empty: 
+        print("Sem dados para o Arquivo 019_RATE_GEO_ACCESSORIAL_I.csv. Arquivo não será gerado.") 
+        return
+
     output_path = os.path.join(output_folder_path, "019_RATE_GEO_ACCESSORIAL_I.csv")
 
     # Criar as linhas padrão
@@ -2069,7 +2211,7 @@ def create_csv_019(df): #019_RATE_GEO_ACCESSORIAL_I
                 formatted_line = f"{domain2}{triang},{domain2}{data_criacao}_{code_trp}_{origem}_{destino}_{modald_sigla}_{equipamento},{domain2}{triang},{domain1}"  
                 unique_lines.add(formatted_line) 
         
-        if tipo_tarifa in ["RODOVIARIO", "CONSOLIDADO", "CABOTAGEM", "DIRETO", "REDESPACHO"] and type_modal == tipo_tarifa and pd.notna(pedagio) and pedagio not in ["", "0.00", "0", "0.0", 0.00, 0, 0.0, 0.00, 0, 0.0]:                                       
+        if tipo_tarifa in ["RODOVIARIO", "CONSOLIDADO", "CABOTAGEM", "DIRETO", "REDESPACHO", "SPOT"] and type_modal == tipo_tarifa and pd.notna(pedagio) and pedagio not in ["", "0.00", "0", "0.0", 0.00, 0, 0.0, 0.00, 0, 0.0]:                                       
             if modal_sigla:
                 formatted_line = f"{domain2}{data_criacao}_{code_trp}_{origem}_{destino}_{modal_sigla}_{equipamento}_{cod_pedagio},{domain2}{data_criacao}_{code_trp}_{origem}_{destino}_"\
                                 f"{modal_sigla}_{equipamento},{domain2}{cod_acessorial},{domain1}"
@@ -2087,7 +2229,7 @@ def create_csv_019(df): #019_RATE_GEO_ACCESSORIAL_I
                                 f"{modal_sigla}_{equipamento},{domain3}{parada_acessorial},{domain1}"
                 unique_lines.add(formatted_line) 
         
-        if tipo_tarifa in ["RODOVIARIO", "CONSOLIDADO", "CABOTAGEM", "DIRETO", "REDESPACHO"] and type_modal == tipo_tarifa and pd.notna(ajudante) and ajudante not in ["", "0.00", "0", "0.0", 0.00, 0, 0.0, 0.00, 0, 0.0]:                                       
+        if tipo_tarifa in ["RODOVIARIO", "CONSOLIDADO", "CABOTAGEM", "DIRETO", "REDESPACHO", "SPOT"] and type_modal == tipo_tarifa and pd.notna(ajudante) and ajudante not in ["", "0.00", "0", "0.0", 0.00, 0, 0.0, 0.00, 0, 0.0]:                                       
             if modal_sigla:
                 formatted_line = f"{domain2}{code_trp}_{ajudante_nome}_{modal_sigla},{domain2}{data_criacao}_{code_trp}_{origem}_{destino}_"\
                                  f"{modal_sigla}_{equipamento},{domain2}{ajudante_acessorial},{domain1}"
@@ -2105,14 +2247,14 @@ def create_csv_019(df): #019_RATE_GEO_ACCESSORIAL_I
                                 f"{modald_sigla}_{equipamento},{domain2}{custof_acessorial},{domain1}"
                 unique_lines.add(formatted_line)
         
-         
-        if tipo_tarifa == "CONSOLIDADO" and type_modal == tipo_tarifa and (origem, destino) in pares_origem_destino:                                        
+    
+        if ((tipo_tarifa == "CONSOLIDADO" or (tipo_tarifa == "SPOT" and (nro_coletas > 1 or nro_entregas > 1))) and type_modal == tipo_tarifa and (origem, destino) in pares_origem_destino):                                        
             if modal_sigla:
                 formatted_line = f"{domain2}{data_criacao}_{code_trp}_{origem}_{destino}_{modal_sigla}_{equipamento}_{parada_cod},{domain2}{data_criacao}_{code_trp}_{origem}_{destino}_"\
                                 f"{modal_sigla}_{equipamento},{domain2}{parada_acessorial},{domain1}"
                 unique_lines.add(formatted_line)
                 
-        if tipo_tarifa in ["RODOVIARIO", "CONSOLIDADO", "CABOTAGEM", "DIRETO", "REDESPACHO"] and type_modal == tipo_tarifa and pd.notna(ad_valorem) and ad_valorem not in ["", "0.00", "0", "0.0", 0.00, 0, 0.0, 0.00, 0, 0.0]:                                       
+        if tipo_tarifa in ["RODOVIARIO", "CONSOLIDADO", "CABOTAGEM", "DIRETO", "REDESPACHO", "SPOT"] and type_modal == tipo_tarifa and pd.notna(ad_valorem) and ad_valorem not in ["", "0.00", "0", "0.0", 0.00, 0, 0.0, 0.00, 0, 0.0]:                                       
             if modal_sigla:
                 formatted_line = f"{domain2}{data_criacao}_{code_trp}_{origem}_{destino}_{modal_sigla}_{equipamento}_{advalorem_cod},{domain2}{data_criacao}_{code_trp}_{origem}_{destino}_"\
                                 f"{modal_sigla}_{equipamento},{domain2}{advalorem_acessorial},{domain1}"
@@ -2123,6 +2265,10 @@ def create_csv_019(df): #019_RATE_GEO_ACCESSORIAL_I
                 formatted_line = f"{domain2}{data_criacao}_{code_trp}_{origem}_{destino}_{modald_sigla}_{equipamento}_{advalorem_cod},{domain2}{data_criacao}_{code_trp}_{origem}_{destino}_"\
                                 f"{modald_sigla}_{equipamento},{domain2}{advalorem_acessorial},{domain1}"
                 unique_lines.add(formatted_line) 
+
+    if not unique_lines: 
+        # print("Nenhuma linha válida para o Arquivo 019_RATE_GEO_ACCESSORIAL_I.csv. Arquivo não será gerado.") 
+        return
 
      # Ordenar as linhas únicas pelo penúltimo campo
     def get_penultimate_field(formatted_line):
@@ -2144,6 +2290,11 @@ def create_csv_019(df): #019_RATE_GEO_ACCESSORIAL_I
     return 
 
 def create_csv_020(df): #020_RATE_PREFERENCE_IU
+    global zone
+    if df.empty: 
+        print("Sem dados para o Arquivo 020_RATE_PREFERENCE_IU.csv. Arquivo não será gerado.") 
+        return
+
     output_path = os.path.join(output_folder_path, "020_RATE_PREFERENCE_IU.csv")
 
     # Criar as linhas padrão
@@ -2207,6 +2358,11 @@ def create_csv_020(df): #020_RATE_PREFERENCE_IU
                              f"B,{domain1}"
             unique_lines.add(formatted_line)  # Adiciona a linha ao conjunto
 
+
+    if not unique_lines: 
+        # print("Nenhuma linha válida para o Arquivo 020_RATE_PREFERENCE_IU.csv. Arquivo não será gerado.") 
+        return
+
     # Combinar as linhas padrão com as linhas geradas
     final_lines = lines + list(unique_lines)
 
@@ -2219,6 +2375,11 @@ def create_csv_020(df): #020_RATE_PREFERENCE_IU
     return 
 
 def create_csv_021(df): #021_RATE_PREFERENCE_DETAIL_IU
+    global zone
+    if df.empty: 
+        print("Sem dados para o Arquivo 021_RATE_PREFERENCE_DETAIL_IU.csv. Arquivo não será gerado.") 
+        return
+
     output_path = os.path.join(output_folder_path, "021_RATE_PREFERENCE_DETAIL_IU.csv")
 
     # Criar as linhas padrão
@@ -2233,38 +2394,20 @@ def create_csv_021(df): #021_RATE_PREFERENCE_DETAIL_IU
     for index, row in df.iterrows():
         # Extraindo os valores das colunas G e I usando iloc
         code_trp = row.iloc[col_idx['COD_TRANSPORTADORA']]
-        nome_trp = row.iloc[col_idx['NOME_TRANSPORTADORA']]
         tipo_tarifa = row.iloc[col_idx['TIPO_DE_TARIFA']]
         tipo_dedicada = row.iloc[col_idx['TIPO_DE_DEDICADA']]
-        percent_ida = row.iloc[col_idx['%_DO_TRAJETO_DA_FD']]
-        operacao = row.iloc[col_idx['OPERACAO']]
         origem = row.iloc[col_idx['ZONA_DE_TRANSPORTE_ORIGEM']]
         destino = row.iloc[col_idx['ZONA_DE_TRANSPORTE_DESTINO']]
-        equipamento = row.iloc[col_idx['PERFIL_GRUPO_DE_EQUIPAMENTO']]
         data_criacao = convert_date_format(row.iloc[col_idx['DATA_DE_INICIO']])
         data_expiracao = convert_date_format(row.iloc[col_idx['DATA_DE_EXPIRACAO']])
-        if data_criacao is None:
-            data_criacao = "00000000"
-        if data_expiracao is None:
-            data_expiracao = "00000000"
-        effective_data = data_criacao + "000000"
-        expiration_data = data_expiracao + "000000"
         tarifa_pref = row.iloc[col_idx['TARIFA_PREFERENCIAL']]
         
         domain1 = lst.domain[0]  # Isso retorna "NTR/BR"
-        domain2 = lst.domain[1]  # Isso retorna "NTR/BR."
-        
-        infos_dict = lst.infos[0]  # Acessando o único dicionário na lista
-        infos7 = infos_dict.get("BRL") 
-        
-        cod_pedagio = lst.pedagio[0]
-        cost_category = lst.pedagio[3]
-        
-        zona = lst.zone[1]
+        domain2 = lst.domain[1]  # Isso retorna "NTR/BR." 
         
         modal_code = ""
         modal_type = ""
-        shipment= ""
+    
         
         for modal_entry in lst.modal:
             if isinstance(modal_entry, dict) and modal_entry["TIPO_MODAL"] == tipo_tarifa:
@@ -2297,7 +2440,12 @@ def create_csv_021(df): #021_RATE_PREFERENCE_DETAIL_IU
             if modald_code:
                 formatted_line = f"{domain2}{data_criacao}_{origem}_{destino},{domain2}{modald_code}{code_trp},{domain1}"
                 unique_lines.add(formatted_line)  # Adiciona a linha ao conjunto
-                
+
+
+    if not unique_lines: 
+        # print("Nenhuma linha válida para o Arquivo 021_RATE_PREFERENCE_DETAIL_IU.csv. Arquivo não será gerado.") 
+        return
+
     # Combinar as linhas padrão com as linhas geradas
     final_lines = lines + list(unique_lines)
 
@@ -2309,167 +2457,85 @@ def create_csv_021(df): #021_RATE_PREFERENCE_DETAIL_IU
     print(f"Arquivo 021_RATE_PREFERENCE_DETAIL_UI.csv salvo com sucesso.")
     return 
 
-def create_csv_022(df): #022_RATE_GEO_STOPS_I
+def create_csv_022(df):  # 022_RATE_GEO_STOPS_I
     global zone
-    output_path = os.path.join(output_folder_path, "022_RATE_GEO_STOPS_I.csv")
 
-    # Criar as linhas padrão
+    # Verificar se o DataFrame está vazio
+    if df.empty:
+        print("Nenhum dado disponível. Arquivo 022_RATE_GEO_STOPS_I.csv não será gerado.")
+        return
+
+    output_path = os.path.join(output_folder_path, "022_RATE_GEO_STOPS_I.csv")
+    # Linhas padrão (cabeçalho)
     lines = [
         "RATE_GEO_STOPS",
         "RATE_GEO_GID,LOW_STOP,HIGH_STOP,PER_STOP_COST,PER_STOP_COST_GID,PER_STOP_COST_BASE,DOMAIN_NAME",
         "EXEC SQL ALTER SESSION SET NLS_DATE_FORMAT = 'YYYYMMDDHH24MISS'"
     ]
-    
-    unique_lines1 = set()
-    unique_lines2 = set()
-    unique_lines3 = set()
-    unique_lines4 = set()
-    # Adicionar as linhas formatadas com base no df 
-    for index, row in df.iterrows():
-        # Extraindo os valores das colunas G e I usando iloc
-        code_trp = row.iloc[col_idx['COD_TRANSPORTADORA']]
-        tipo_tarifa = row.iloc[col_idx['TIPO_DE_TARIFA']]
-        tipo_dedicada = row.iloc[col_idx['TIPO_DE_DEDICADA']]
-        percent_ida = row.iloc[col_idx['%_DO_TRAJETO_DA_FD']]
-        operacao = row.iloc[col_idx['OPERACAO']]
-        origem = row.iloc[col_idx['ZONA_DE_TRANSPORTE_ORIGEM']]
-        desc_origem = row.iloc[col_idx['DESCRICAO_ZONA_DE_TRANSPORTE_ORIGEM']]
-        destino = row.iloc[col_idx['ZONA_DE_TRANSPORTE_DESTINO']]
-        equipamento = row.iloc[col_idx['PERFIL_GRUPO_DE_EQUIPAMENTO']]
-        redespacho = row.iloc[col_idx['REDESPACHO']]
-        data_criacao = convert_date_format(row.iloc[col_idx['DATA_DE_INICIO']])
-        data_expiracao = convert_date_format(row.iloc[col_idx['DATA_DE_EXPIRACAO']])
-
-             
-        domain1 = lst.domain[0]  # Isso retorna "NTR/BR"
-        domain2 = lst.domain[1]  # Isso retorna "NTR/BR."
-
-
-        type_modal = '' 
-        modal_sigla=""   
-        
-        for modal_entry in lst.modal:
-            if isinstance(modal_entry, dict) and modal_entry["TIPO_MODAL"] == tipo_tarifa:
-                type_modal = modal_entry["TIPO_MODAL"]
-                modal_sigla = modal_entry["SIGLA_MODAL"]
-                break 
-        
-        type_modald = '' 
-        modald_sigla=""
-        
-        for modal_dedicada in lst.modalDedicado:
-            if isinstance(modal_dedicada, dict) and modal_dedicada["TIPO_MODAL"] == tipo_tarifa:
-                type_modald = modal_entry["TIPO_MODAL"]
-                modald_sigla = modal_entry["SIGLA_MODAL"]
-                break 
-            
-        infos_dict = lst.infos[0]  # Acessando o único dicionário na lista
-        infos7 = infos_dict.get("BRL") 
-
-        pares_redespacho = [
-        ("SP0388800", "AL0055005"),
-        ("SP0388800", "BA0307005"), 
-        ("SP0388800", "PA0024005"),
-        ("SP0388800", "AM1302606"),
-        ("AL0055005", "SP0388800"),
-        ("AL0055005", "SP0084005"),
-        ("BA0307005", "SP0388800"),
-        ("BA0307005", "SP0084005"),
-        ("PA0024005", "SP0388800"),
-        ("PA0024005", "SP0084005"),
-        ("AM1302606", "SP0388800"),
-        ("AM1302606", "SP0084005"),
+    unique_lines = set()  # Um único set é suficiente
+    # Constantes (não precisam ficar dentro do loop)
+    domain1 = lst.domain[0]  # "NTR/BR"
+    domain2 = lst.domain[1]  # "NTR/BR."
+    infos7 = lst.infos[0].get("BRL")
+    pares_redespacho = [
+        ("SP0388800", "AL0055005"), ("SP0388800", "BA0307005"),
+        ("SP0388800", "PA0024005"), ("SP0388800", "AM1302606"),
+        ("AL0055005", "SP0388800"), ("AL0055005", "SP0084005"),
+        ("BA0307005", "SP0388800"), ("BA0307005", "SP0084005"),
+        ("PA0024005", "SP0388800"), ("PA0024005", "SP0084005"),
+        ("AM1302606", "SP0388800"), ("AM1302606", "SP0084005"),
         ("PA0015005", "SP0084005")
     ]
-
-    if tipo_tarifa == type_modal and tipo_tarifa in ["REDESPACHO"] and  redespacho != '' and (origem, destino) in pares_redespacho:
-        if modal_sigla:   
-            formatted_line1 = f"{domain2}{data_criacao}_{code_trp}_{origem}_{destino}_{modal_sigla}_{equipamento},1,1,{redespacho},{infos7},,{domain1}"
-            formatted_line2 = f"{domain2}{data_criacao}_{code_trp}_{origem}_{destino}_{modal_sigla}_{equipamento},2,4,0.00,{infos7},,{domain1}"  
-            unique_lines1.add(formatted_line1)
-            unique_lines2.add(formatted_line2)
-
-
-    if tipo_tarifa == type_modald and tipo_tarifa in ["REDESPACHO"] and  redespacho != '' and (origem, destino) in pares_redespacho:
-        if modald_sigla:   
-                formatted_line3 = f"{domain2}{data_criacao}_{code_trp}_{origem}_{destino}_{modald_sigla}_{equipamento},1,1,{redespacho},{infos7},,{domain1}"
-                formatted_line4 = f"{domain2}{data_criacao}_{code_trp}_{origem}_{destino}_{modald_sigla}_{equipamento},2,4,0.00,{infos7},,{domain1}"                    
-                unique_lines3.add(formatted_line3) 
-                unique_lines4.add(formatted_line4)      
-        
-
-    # Combinar as linhas padrão com as linhas geradas
-    final_lines = lines + list(unique_lines1) + list(unique_lines2) + list(unique_lines3) + list(unique_lines4) 
-    
-    # Salvar as linhas no arquivo CSV
-    with open(output_path, 'w') as f:
-        for line in final_lines:
-            f.write(line + '\n')
-          
-    print(f"Arquivo 022_RATE_GEO_STOPS_I.csv salvo com sucesso.")
-    return 
-
-
-# def create_csv_YADP(df): # ***** DENIFIR REGRAS ****
-    output_path = os.path.join(output_folder_path, "YADP.csv")
-
-    # Criar as linhas padrão
-    lines = [
-        "NÃ£o Modificar esta linha;KSCHL;DATAB;DATBI;KBETR;KONWA;KOSTKZ;MANDT;TDLNR"
-    ]
-    unique_lines = set()
-    # Adicionar as linhas formatadas com base no df 
     for index, row in df.iterrows():
-        # Extraindo os valores das colunas G e I usando iloc
-        data_criacao = row.iloc[32]
-        data_expiracao = row.iloc[33] 
-        data_criacao= convert_date_format(data_criacao)
-        data_expiracao = convert_date_format(data_expiracao)
-        effective_data = data_criacao + "000000"
-        expiration_data = data_expiracao + "000000"
-        code_trp = row.iloc[0] # trp 
-        origem = row.iloc[6] # Origem
-        destino = row.iloc[8] # destino
-        equipa = row.iloc[10]# Gruo Equipamento
-        tarifa = row.iloc[2] # Tipo de Tarifa 
-        custo = row.iloc[12] # Custo
-        pedagio = row.iloc[24] #Valor pedágio
-        tarifa_pref = row.iloc[31]
-        domain1 = lst.domain[0]  # Isso retorna "NTR/BR"
-        domain2 = lst.domain[1]  # Isso retorna "NTR/BR."
-        
-        infos_dict = lst.infos[0]  # Acessando o único dicionário na lista
-        infos7 = infos_dict.get("BRL") 
-        
-        cod_pedagio = lst.pedagio[0]
-        cost_category = lst.pedagio[3]
-        
-        zona = lst.zone[1]
-        
-        modal_code = ""
-        shipment= ""
-        
+        tipo_tarifa = row.iloc[col_idx['TIPO_DE_TARIFA']]
+        # Filtro rápido: só processa se for REDESPACHO
+        if tipo_tarifa != "REDESPACHO":
+            continue
+        redespacho = row.iloc[col_idx['REDESPACHO']]
+        # Verifica se redespacho está preenchido
+        if not redespacho or str(redespacho).strip() == '' or str(redespacho).upper() == 'NAN':
+            continue
+        origem = row.iloc[col_idx['ZONA_DE_TRANSPORTE_ORIGEM']]
+        destino = row.iloc[col_idx['ZONA_DE_TRANSPORTE_DESTINO']]
+        # Verifica se o par origem-destino é válido
+        if (origem, destino) not in pares_redespacho:
+            continue
+        # Se chegou aqui, a linha é válida! Vamos buscar os dados
+        code_trp = row.iloc[col_idx['COD_TRANSPORTADORA']]
+        equipamento = row.iloc[col_idx['PERFIL_GRUPO_DE_EQUIPAMENTO']]
+        data_criacao = convert_date_format(row.iloc[col_idx['DATA_DE_INICIO']])
+        # Buscar sigla do modal normal
+        modal_sigla = None
         for modal_entry in lst.modal:
-            if isinstance(modal_entry, dict) and modal_entry["TIPO_MODAL"] == "RODOVIARIO":
-                modal_code = modal_entry["R_C_D"]
-                break 
-            
-        for shipment_entry in lst.tarifas_shipment:
-            if shipment_entry["TIPO_DE_TARIFA"] == tarifa:
-                shipment = shipment_entry["SHIPMENT"]
-                break 
-        
-        if tarifa_pref == "SIM":
-            formatted_line = ""
-            unique_lines.add(formatted_line)  # Adiciona a linha ao conjunto
+            if isinstance(modal_entry, dict) and modal_entry.get("TIPO_MODAL") == tipo_tarifa:
+                modal_sigla = modal_entry.get("SIGLA_MODAL")
+                break
+        # Buscar sigla do modal dedicado (CORRIGIDO!)
+        modald_sigla = None
+        for modal_dedicada in lst.modalDedicado:
+            if isinstance(modal_dedicada, dict) and modal_dedicada.get("TIPO_MODAL") == tipo_tarifa:
+                modald_sigla = modal_dedicada.get("SIGLA_MODAL")  # ✅ CORRIGIDO
+                break
+        # Gerar linhas para cada sigla encontrada
+        for sigla in [modal_sigla, modald_sigla]:
+            if sigla:  # Só gera se a sigla foi encontrada
+                gid_base = f"{domain2}{data_criacao}_{code_trp}_{origem}_{destino}_{sigla}_{equipamento}"
+                line1 = f"{gid_base},1,1,{redespacho},{infos7},,{domain1}"
+                line2 = f"{gid_base},2,4,0.00,{infos7},,{domain1}"
+                unique_lines.add(line1)
+                unique_lines.add(line2)
 
-    # Combinar as linhas padrão com as linhas geradas
+    # Verificar se há linhas únicas geradas (além do cabeçalho)
+    if not unique_lines:
+        # print("Nenhuma linha válida gerada. Arquivo 022_RATE_GEO_STOPS_I.csv não será gerado.")
+        return
+
+    # Combinar linhas padrão com as geradas
     final_lines = lines + list(unique_lines)
-
-    # Salvar as linhas no arquivo CSV
-    with open(output_path, 'w') as f:
+    # Salvar no arquivo
+    with open(output_path, 'w', encoding='utf-8') as f:
         for line in final_lines:
             f.write(line + '\n')
+    print(f"Arquivo 022_RATE_GEO_STOPS_I.csv salvo com sucesso.")
+    return
 
-    print(f"Arquivo YADP.csv salvo com sucesso.")
-    return 

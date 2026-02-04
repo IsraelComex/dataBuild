@@ -31,6 +31,39 @@ def converter_data(valor):
 # Defina a opção do pandas para aceitar o comportamento futuro
 pd.set_option('future.no_silent_downcasting', True)
 
+
+def limpar_pasta_csv():
+    """Remove todos os arquivos CSV da pasta de saída antes de gerar novos."""
+    output_folder_path = r'C:\Temp\Cadastro de Tabela\templates_csv'
+
+    # Verifica se a pasta existe
+    if not os.path.exists(output_folder_path):
+        print(f"Pasta {output_folder_path} não existe. Criando...")
+        os.makedirs(output_folder_path)
+        return
+
+    # Lista todos os arquivos CSV na pasta
+    csv_files = [f for f in os.listdir(output_folder_path) if f.endswith('.csv')]
+
+    if not csv_files:
+        print("Nenhum arquivo CSV encontrado na pasta para limpar.")
+        return
+
+    # Remove cada arquivo
+    arquivos_removidos = 0
+    for csv_file in csv_files:
+        try:
+            file_path = os.path.join(output_folder_path, csv_file)
+            os.remove(file_path)
+            arquivos_removidos += 1
+        except Exception as e:
+            print(f"⚠️  Erro ao remover {csv_file}: {str(e)}")
+
+    print(f"✓ {arquivos_removidos} arquivo(s) CSV removido(s) da pasta.")
+
+
+
+
 # Função para processar arquivo Excel
 def processar_arquivo_excel(excel_path):
     # Definir a data atual no início da função para evitar o erro UnboundLocalError
@@ -222,7 +255,8 @@ def processar_arquivo_excel(excel_path):
     df.columns = df.columns.str.strip()
 
     # Verificar a condição adicional para 'TIPO_DE_TARIFA' e colunas AI e AJ
-    cond = (df['TIPO_DE_TARIFA'] == 'CONSOLIDADO') & (df['NRO_COLETAS'] < 2) & (df['NRO_ENTREGAS'] < 2)
+    cond = ((df['TIPO_DE_TARIFA'] == 'CONSOLIDADO') | (df['TIPO_DE_TARIFA'] == 'SPOT')) & (df['NRO_COLETAS'] > 1) & (df['NRO_ENTREGAS'] > 1)
+
     # Verifica se a condição foi satisfeita em alguma linha
     if cond.any():  # Condição em qualquer linha que atenda ao critério
         resposta = input("Números de coletas e entregas não estão consolidadas. Deseja continuar? (s/n): ")
@@ -257,6 +291,7 @@ def processar_arquivo_excel(excel_path):
             'Origem': row['ZONA_DE_TRANSPORTE_ORIGEM'],
             'Destino': row['ZONA_DE_TRANSPORTE_DESTINO'],
             'Transportadora': row['COD_TRANSPORTADORA'],
+            'Tarifa': row['TIPO_DE_TARIFA'],
             'Equipamento': row['PERFIL_GRUPO_DE_EQUIPAMENTO']
         }
         registros.append(registro)
